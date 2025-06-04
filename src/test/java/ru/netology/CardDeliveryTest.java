@@ -1,5 +1,6 @@
 package ru.netology;
 
+import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selenide;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,14 +45,16 @@ public class CardDeliveryTest {
     public void sendigFormValidDataSelectDateInCalendarAndSity() { //выбор даты из календаря и города из списка
         $("[data-test-id='city'] input").setValue("Мо");
         $(".input__menu").find(byText("Москва")).should(visible, Duration.ofSeconds(15)).click();
-        $("[data-test-id='date'] input").press(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.DELETE);  //очищаем поле календаря
+
         $("button.icon-button").click(); // Нажатие на иконку календаря
-        LocalDate planningDateLocal = LocalDate.now().plusDays(7); //добавляем к текущей дате неделю
-        String planningDate = planningDateLocal.format(DateTimeFormatter
-                .ofPattern("dd.MM.yyyy")); //кладем в переменную planningDate и приводим к нужному формату
-        String dayForClick = planningDateLocal.getDayOfMonth() + ""; //определяем только день месяца
-        $$(".calendar__day").filter(visible)
-                .find(text(dayForClick)).click(); //кликаем по найденному дню
+        LocalDate planningDateLocal = LocalDate.now().plusDays(30); //добавляем к текущей дате неделю
+        String planningDate = planningDateLocal.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")); //кладем в переменную planningDate и приводим к нужному формату
+        int necessaryMonth = planningDateLocal.getMonthValue(); //определяем нужный месяц из планируемой даты и кладем в переменную
+        int currentMonth = extractCurrentMonthFromCalendar(); //определяем текущий месяц отображаемый на экране и кладем в переменную (вспомогательный метод)
+        navigateToCorrectMonth(currentMonth, necessaryMonth); //переключаем календарь на нужный (планируемы) месяц если он не совпадает с текущим, с помощью вспомогательного метоад
+        String dayForClick = planningDateLocal.format(DateTimeFormatter.ofPattern("d")); //форматируем день полученный из даты в строку
+        $$(".calendar__day").filterBy(Condition.text(dayForClick)).first().click(); //нажимаем на выбранный день
+
         $("[data-test-id='name'] input").setValue("Иванов Иван Иванович");
         $("[data-test-id='phone'] input").setValue("+71234567890");
         $("[data-test-id='agreement']").click();
@@ -59,5 +62,48 @@ public class CardDeliveryTest {
         $(".notification__content")
                 .should(visible, Duration.ofSeconds(15))
                 .should(text("Встреча успешно забронирована на " + planningDate));
+    }
+
+    //метод возвращающий текущий месяц отображаемый в данный момент на экране в календаре
+    private int extractCurrentMonthFromCalendar() {
+        String fullName = $(".calendar__name").getText().trim(); //В fullName кладем месяц+год
+        String[] parts = fullName.split("\\s+"); // разбиение на части (месяц и год) и кладем в массив
+        String monthNameRu = parts[0]; //извлекаем имя месяца из массива и кладем в monthName, но месяц на русском
+        switch (monthNameRu) {  // Таблица соответствия русских названий месяцев с числами, что бы избежать русских названий присваиваем им цифры
+            case "Январь":
+                return 1;
+            case "Февраль":
+                return 2;
+            case "Март":
+                return 3;
+            case "Апрель":
+                return 4;
+            case "Май":
+                return 5;
+            case "Июнь":
+                return 6;
+            case "Июль":
+                return 7;
+            case "Август":
+                return 8;
+            case "Сентябрь":
+                return 9;
+            case "Октябрь":
+                return 10;
+            case "Ноябрь":
+                return 11;
+            case "Декабрь":
+                return 12;
+            default:
+                throw new IllegalStateException("Недопустимое имя месяца: " + monthNameRu);
+        }
+    }
+
+    //метод для поиска нужного месяца. Кликаем по стрелке вправо пока не найдем нужный месяц. В currentMonth кладем отображаемый на экране месяц
+    private void navigateToCorrectMonth(int currentMonth, int nesseseryMonth) {
+        while (currentMonth != nesseseryMonth) {
+            $$(".calendar__arrow.calendar__arrow_direction_right").last().click();
+            currentMonth = extractCurrentMonthFromCalendar();
+        }
     }
 }
